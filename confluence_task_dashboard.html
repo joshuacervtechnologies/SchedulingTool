@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confluence Task Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome for fallback & crisp icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        },
+                        confluence: '#0052CC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.7); }
+        .gantt-bar-hover:hover { filter: brightness(1.15); cursor: pointer; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-30 px-4 py-3 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Branding -->
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                    <i class="fa-solid fa-square-check text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">Confluence Task Hub</h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span id="data-source-badge" class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span id="data-source-text">Mock Data Mode</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Controls & Refresh -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Mode Toggle Badge -->
+                <button id="toggle-data-mode" onclick="toggleDataMode()" class="text-xs px-3 py-1.5 rounded-md font-medium border bg-slate-700/60 border-slate-600 hover:bg-slate-700 transition flex items-center gap-1.5 text-slate-300">
+                    <i class="fa-solid fa-toggle-on text-emerald-400" id="mode-icon"></i>
+                    <span id="mode-btn-label">Use Live API</span>
+                </button>
+
+                <!-- Sync Button -->
+                <button id="refresh-btn" onclick="fetchTasks()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-sm font-semibold transition shadow-lg shadow-blue-600/20 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+                    <span class="hidden sm:inline">Refresh Data</span>
+                </button>
+
+                <!-- Settings Trigger -->
+                <button onclick="toggleModal('settings-modal', true)" class="p-2 text-slate-400 hover:text-white bg-slate-700/40 hover:bg-slate-700 rounded-md border border-slate-600/60 transition" title="API Credentials Configuration">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 flex-1 flex flex-col gap-6">
+
+        <!-- FILTER & NAVIGATION BAR -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/40 p-3 rounded-xl border border-slate-700/50">
+            
+            <!-- View Tabs -->
+            <div class="flex items-center bg-slate-900/80 p-1 rounded-lg border border-slate-700/60 text-sm">
+                <button onclick="switchView('gantt')" id="tab-gantt" class="view-tab flex items-center gap-2 px-3.5 py-1.5 rounded-md font-medium transition text-white bg-blue-600 shadow-sm">
+                    <i class="fa-solid fa-chart-gantt text-xs"></i>
+                    <span>Gantt Chart</span>
+                </button>
+                <button onclick="switchView('kanban')" id="tab-kanban" class="view-tab flex items-center gap-2 px-3.5 py-1.5 rounded-md font-medium transition text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-table-columns text-xs"></i>
+                    <span>Kanban Board</span>
+                </button>
+                <button onclick="switchView('table')" id="tab-table" class="view-tab flex items-center gap-2 px-3.5 py-1.5 rounded-md font-medium transition text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-list-check text-xs"></i>
+                    <span>Task List</span>
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Search -->
+                <div class="relative flex-1 sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+                    <input type="text" id="filter-search" oninput="renderCurrentView()" placeholder="Filter tasks..." class="w-full bg-slate-900/90 text-slate-200 text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500">
+                </div>
+
+                <!-- Status Filter -->
+                <select id="filter-status" onchange="renderCurrentView()" class="bg-slate-900/90 text-slate-300 text-xs px-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500">
+                    <option value="ALL">All Statuses</option>
+                    <option value="complete">Completed</option>
+                    <option value="incomplete">Incomplete</option>
+                </select>
+
+                <!-- Assignee Filter -->
+                <select id="filter-assignee" onchange="renderCurrentView()" class="bg-slate-900/90 text-slate-300 text-xs px-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500">
+                    <option value="ALL">All Assignees</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- STATS BANNER -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">Total Tasks</p>
+                    <p class="text-xl font-bold text-white mt-0.5" id="stat-total">0</p>
+                </div>
+                <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg"><i class="fa-solid fa-list text-sm"></i></div>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">Completed</p>
+                    <p class="text-xl font-bold text-emerald-400 mt-0.5" id="stat-completed">0</p>
+                </div>
+                <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg"><i class="fa-solid fa-check text-sm"></i></div>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">Pending</p>
+                    <p class="text-xl font-bold text-amber-400 mt-0.5" id="stat-pending">0</p>
+                </div>
+                <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg"><i class="fa-solid fa-clock text-sm"></i></div>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">Pages Linked</p>
+                    <p class="text-xl font-bold text-indigo-400 mt-0.5" id="stat-pages">0</p>
+                </div>
+                <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg"><i class="fa-solid fa-file-lines text-sm"></i></div>
+            </div>
+        </div>
+
+        <!-- DYNAMIC VIEWS CONTAINER -->
+        <div id="views-wrapper" class="flex-1 bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 min-h-[420px] flex flex-col relative overflow-hidden">
+            
+            <!-- LOADING OVERLAY -->
+            <div id="loading-spinner" class="hidden absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i>
+                <p class="text-sm font-medium text-slate-300">Fetching Confluence Workspace Data...</p>
+            </div>
+
+            <!-- GANTT VIEW -->
+            <div id="view-gantt" class="view-panel flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-slate-200">Interactive Timeline Schedule</h2>
+                    <span class="text-xs text-slate-400">Task durations extrapolated from creation & due dates</span>
+                </div>
+                <div class="overflow-x-auto flex-1 border border-slate-700/60 rounded-lg bg-slate-900/50 p-3" id="gantt-container">
+                    <!-- SVG Timeline dynamically inserted -->
+                </div>
+            </div>
+
+            <!-- KANBAN VIEW -->
+            <div id="view-kanban" class="view-panel hidden flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- To Do Column -->
+                <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span> To Do / Pending
+                        </span>
+                        <span id="kanban-count-todo" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
+                    </div>
+                    <div id="kanban-todo" class="flex-1 space-y-2 overflow-y-auto max-h-[500px]"></div>
+                </div>
+
+                <!-- In Progress Column -->
+                <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-400"></span> In Progress (Upcoming Due)
+                        </span>
+                        <span id="kanban-count-progress" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
+                    </div>
+                    <div id="kanban-progress" class="flex-1 space-y-2 overflow-y-auto max-h-[500px]"></div>
+                </div>
+
+                <!-- Complete Column -->
+                <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
+                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Completed
+                        </span>
+                        <span id="kanban-count-done" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
+                    </div>
+                    <div id="kanban-done" class="flex-1 space-y-2 overflow-y-auto max-h-[500px]"></div>
+                </div>
+            </div>
+
+            <!-- TABLE VIEW -->
+            <div id="view-table" class="view-panel hidden flex-1 overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="text-slate-400 bg-slate-900/80 uppercase tracking-wider font-medium border-b border-slate-700">
+                        <tr>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Action Item</th>
+                            <th class="p-3">Assignee</th>
+                            <th class="p-3">Due Date</th>
+                            <th class="p-3">Origin Confluence Page</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-700/50">
+                        <!-- Rows dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- CONFIGURATION / API SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleModal('settings-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                <i class="fa-solid fa-key text-blue-400"></i> Atlassian API Connection
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Credentials are saved in browser LocalStorage only and never uploaded anywhere.</p>
+
+            <form onsubmit="saveSettings(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-slate-300 mb-1">Confluence Domain URL</label>
+                    <input type="text" id="cfg-domain" placeholder="https://your-domain.atlassian.net" class="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-300 mb-1">Account Email</label>
+                    <input type="email" id="cfg-email" placeholder="user@company.com" class="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-300 mb-1">Atlassian API Token</label>
+                    <input type="password" id="cfg-token" placeholder="ATATT3xFfGF0..." class="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-300 mb-1">CORS Proxy URL (Required for GitHub Pages)</label>
+                    <input type="text" id="cfg-proxy" placeholder="https://corsproxy.io/?" class="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Default is standard proxy wrapper to bypass GitHub Pages browser CORS limits.</p>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('settings-modal', false)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-medium">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold">Save & Test</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- REALISTIC MOCK DATA (Preloaded for GitHub Pages Instant Demo) ---
+        const MOCK_TASKS = [
+            { id: "t1", text: "Finalize system architecture proposal", assignee: "Alex Rivera", dueDate: "2026-11-12", creationDate: "2026-11-01", status: "complete", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
+            { id: "t2", text: "Audit cross-origin API tokens and permissions", assignee: "Sarah Chen", dueDate: "2026-11-18", creationDate: "2026-11-04", status: "incomplete", pageTitle: "Security Review Q4", pageUrl: "#" },
+            { id: "t3", text: "Draft customer migration timeline & Gantt chart", assignee: "Alex Rivera", dueDate: "2026-11-22", creationDate: "2026-11-06", status: "incomplete", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
+            { id: "t4", text: "Configure Cloudflare Workers proxy endpoints", assignee: "Jordan Smyth", dueDate: "2026-11-25", creationDate: "2026-11-08", status: "incomplete", pageTitle: "Infrastructure Sync", pageUrl: "#" },
+            { id: "t5", text: "Deploy staging site for user testing", assignee: "Sarah Chen", dueDate: "2026-11-28", creationDate: "2026-11-10", status: "incomplete", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
+            { id: "t6", text: "Update documentation on live docs integration", assignee: "Unassigned", dueDate: "2026-11-30", creationDate: "2026-11-12", status: "complete", pageTitle: "Doc Rollup Guidelines", pageUrl: "#" }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let currentMode = "mock"; // 'mock' or 'live'
+        let currentView = "gantt";
+        let rawTasks = [...MOCK_TASKS];
+        let filteredTasks = [];
+
+        // App initialization
+        window.onload = function() {
+            loadSavedSettings();
+            fetchTasks();
+        };
+
+        // --- VIEW SWITCHING ---
+        function switchView(viewName) {
+            currentView = viewName;
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.view-tab').forEach(t => {
+                t.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                t.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${viewName}`);
+            activeTab.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+            activeTab.classList.remove('text-slate-400');
+
+            renderCurrentView();
+        }
+
+        // --- FETCH LOGIC ---
+        async function fetchTasks() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            
+            refreshIcon.classList.add('fa-spin');
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                if (currentMode === "mock") {
+                    // Simulate network latency
+                    await new Promise(r => setTimeout(r, 600));
+                    rawTasks = [...MOCK_TASKS];
+                } else {
+                    rawTasks = await fetchFromConfluenceAPI();
+                }
+                populateAssigneeFilter();
+                renderCurrentView();
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("Failed to fetch live API tasks. Check credentials & CORS proxy configuration.");
+            } finally {
+                refreshIcon.classList.remove('fa-spin');
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        // Live API Fetch Routine
+        async function fetchFromConfluenceAPI() {
+            const domain = localStorage.getItem('cf_domain')?.replace(/\/$/, "");
+            const email = localStorage.getItem('cf_email');
+            const token = localStorage.getItem('cf_token');
+            const proxy = localStorage.getItem('cf_proxy') || "https://corsproxy.io/?";
+
+            if (!domain || !email || !token) {
+                alert("Please click the Gear icon to configure your Confluence API credentials first.");
+                toggleModal('settings-modal', true);
+                return MOCK_TASKS;
+            }
+
+            // Atlassian Basic Auth Header
+            const authHeader = "Basic " + btoa(`${email}:${token}`);
+            const targetUrl = `${domain}/wiki/api/v2/tasks?limit=50`;
+            const proxiedUrl = proxy + encodeURIComponent(targetUrl);
+
+            const res = await fetch(proxiedUrl, {
+                headers: {
+                    'Authorization': authHeader,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+            const data = await res.json();
+            
+            // Map v2 API response to dashboard schema
+            return (data.results || []).map((t, idx) => ({
+                id: t.id || `live-${idx}`,
+                text: t.body?.storage?.value ? t.body.storage.value.replace(/<[^>]*>?/gm, '') : 'Action Item',
+                assignee: t.assignedTo || 'Unassigned',
+                dueDate: t.dueDate ? t.dueDate.split('T')[0] : '2026-11-30',
+                creationDate: t.createdAt ? t.createdAt.split('T')[0] : '2026-11-01',
+                status: t.status === 'closed' || t.status === 'complete' ? 'complete' : 'incomplete',
+                pageTitle: t.pageId ? `Page ID: ${t.pageId}` : 'Confluence Page',
+                pageUrl: `${domain}/wiki/pages/viewpage.action?pageId=${t.pageId}`
+            }));
+        }
+
+        // --- FILTERING & STATS ---
+        function applyFilters() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const status = document.getElementById('filter-status').value;
+            const assignee = document.getElementById('filter-assignee').value;
+
+            filteredTasks = rawTasks.filter(t => {
+                const matchesSearch = t.text.toLowerCase().includes(search) || t.pageTitle.toLowerCase().includes(search);
+                const matchesStatus = status === 'ALL' || t.status === status;
+                const matchesAssignee = assignee === 'ALL' || t.assignee === assignee;
+                return matchesSearch && matchesStatus && matchesAssignee;
+            });
+
+            // Update stats
+            document.getElementById('stat-total').innerText = rawTasks.length;
+            document.getElementById('stat-completed').innerText = rawTasks.filter(t => t.status === 'complete').length;
+            document.getElementById('stat-pending').innerText = rawTasks.filter(t => t.status === 'incomplete').length;
+            document.getElementById('stat-pages').innerText = new Set(rawTasks.map(t => t.pageTitle)).size;
+        }
+
+        function populateAssigneeFilter() {
+            const select = document.getElementById('filter-assignee');
+            const assignees = Array.from(new Set(rawTasks.map(t => t.assignee)));
+            select.innerHTML = '<option value="ALL">All Assignees</option>' + 
+                assignees.map(a => `<option value="${a}">${a}</option>`).join('');
+        }
+
+        // --- RENDER ROUTER ---
+        function renderCurrentView() {
+            applyFilters();
+            if (currentView === 'gantt') renderGantt();
+            else if (currentView === 'kanban') renderKanban();
+            else if (currentView === 'table') renderTable();
+        }
+
+        // --- RENDER GANTT CHART (SVG/Horizontal Bar Timeline) ---
+        function renderGantt() {
+            const container = document.getElementById('gantt-container');
+            if (!filteredTasks.length) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-8">No tasks match selected filters.</p>';
+                return;
+            }
+
+            // Timeline bounds calculations
+            const dates = filteredTasks.flatMap(t => [new Date(t.creationDate), new Date(t.dueDate)]);
+            let minDate = new Date(Math.min(...dates));
+            let maxDate = new Date(Math.max(...dates));
+
+            // Pad timeline by 2 days
+            minDate.setDate(minDate.getDate() - 2);
+            maxDate.setDate(maxDate.getDate() + 3);
+
+            const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) || 1;
+
+            let html = `
+                <div class="min-w-[700px]">
+                    <!-- Timeline Dates Header -->
+                    <div class="flex border-b border-slate-700/80 pb-2 mb-3 text-[10px] text-slate-400 font-mono">
+                        <div class="w-56 flex-shrink-0 font-sans text-xs font-semibold text-slate-300">Action Item / Page</div>
+                        <div class="flex-1 flex justify-between px-2">
+                            <span>${minDate.toISOString().split('T')[0]}</span>
+                            <span>Timeline (${totalDays} Days Range)</span>
+                            <span>${maxDate.toISOString().split('T')[0]}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+            `;
+
+            filteredTasks.forEach(t => {
+                const start = new Date(t.creationDate);
+                const end = new Date(t.dueDate);
+                
+                const leftPercent = Math.max(0, ((start - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100);
+                const widthPercent = Math.max(4, (((end - start) / (1000 * 60 * 60 * 24)) / totalDays) * 100);
+
+                const barColor = t.status === 'complete' ? 'bg-emerald-500' : 'bg-blue-500';
+
+                html += `
+                    <div class="flex items-center text-xs group">
+                        <!-- Task Metadata -->
+                        <div class="w-56 flex-shrink-0 pr-3 truncate">
+                            <p class="text-slate-200 font-medium truncate ${t.status === 'complete' ? 'line-through text-slate-500' : ''}" title="${t.text}">${t.text}</p>
+                            <p class="text-[10px] text-slate-400 flex items-center gap-1">
+                                <i class="fa-regular fa-file"></i> ${t.pageTitle}
+                            </p>
+                        </div>
+                        <!-- Gantt Bar Lane -->
+                        <div class="flex-1 bg-slate-800/80 rounded-md h-6 relative overflow-hidden border border-slate-700/40">
+                            <div class="absolute h-full rounded ${barColor} gantt-bar-hover transition-all duration-300 flex items-center px-2 text-[10px] text-white font-medium shadow"
+                                 style="left: ${leftPercent}%; width: ${widthPercent}%;"
+                                 title="Due: ${t.dueDate} (${t.assignee})">
+                                 <span class="truncate">${t.assignee}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // --- RENDER KANBAN BOARD ---
+        function renderKanban() {
+            const todoContainer = document.getElementById('kanban-todo');
+            const progressContainer = document.getElementById('kanban-progress');
+            const doneContainer = document.getElementById('kanban-done');
+
+            const todoList = filteredTasks.filter(t => t.status === 'incomplete');
+            const doneList = filteredTasks.filter(t => t.status === 'complete');
+
+            document.getElementById('kanban-count-todo').innerText = todoList.length;
+            document.getElementById('kanban-count-progress').innerText = 0;
+            document.getElementById('kanban-count-done').innerText = doneList.length;
+
+            const cardHTML = t => `
+                <div class="bg-slate-800 border border-slate-700/70 p-3 rounded-lg shadow-sm hover:border-slate-600 transition space-y-2">
+                    <p class="text-xs text-slate-200 font-medium ${t.status === 'complete' ? 'line-through text-slate-400' : ''}">${t.text}</p>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-700/50">
+                        <span class="flex items-center gap-1"><i class="fa-regular fa-user"></i> ${t.assignee}</span>
+                        <span class="flex items-center gap-1"><i class="fa-regular fa-calendar"></i> ${t.dueDate}</span>
+                    </div>
+                </div>
+            `;
+
+            todoContainer.innerHTML = todoList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-4">No tasks</p>';
+            progressContainer.innerHTML = '<p class="text-xs text-slate-600 text-center py-4">No in-progress items</p>';
+            doneContainer.innerHTML = doneList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-4">No tasks</p>';
+        }
+
+        // --- RENDER TABLE VIEW ---
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            if (!filteredTasks.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No matching action items found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredTasks.map(t => `
+                <tr class="hover:bg-slate-800/50 transition">
+                    <td class="p-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${t.status === 'complete' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                            ${t.status === 'complete' ? 'Complete' : 'Pending'}
+                        </span>
+                    </td>
+                    <td class="p-3 font-medium text-slate-200">${t.text}</td>
+                    <td class="p-3 text-slate-400"><i class="fa-regular fa-user text-[10px] mr-1"></i>${t.assignee}</td>
+                    <td class="p-3 text-slate-400 font-mono">${t.dueDate}</td>
+                    <td class="p-3">
+                        <a href="${t.pageUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-xs">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> ${t.pageTitle}
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- MODE TOGGLE & SETTINGS ---
+        function toggleDataMode() {
+            currentMode = currentMode === "mock" ? "live" : "mock";
+            const badge = document.getElementById('data-source-badge');
+            const text = document.getElementById('data-source-text');
+            const label = document.getElementById('mode-btn-label');
+            const icon = document.getElementById('mode-icon');
+
+            if (currentMode === "live") {
+                badge.className = "inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse";
+                text.innerText = "Live Confluence API";
+                label.innerText = "Use Mock Data";
+                icon.className = "fa-solid fa-toggle-off text-blue-400";
+            } else {
+                badge.className = "inline-block w-2 h-2 rounded-full bg-emerald-400";
+                text.innerText = "Mock Data Mode";
+                label.innerText = "Use Live API";
+                icon.className = "fa-solid fa-toggle-on text-emerald-400";
+            }
+            fetchTasks();
+        }
+
+        function toggleModal(id, show) {
+            document.getElementById(id).classList.toggle('hidden', !show);
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            localStorage.setItem('cf_domain', document.getElementById('cfg-domain').value);
+            localStorage.setItem('cf_email', document.getElementById('cfg-email').value);
+            localStorage.setItem('cf_token', document.getElementById('cfg-token').value);
+            localStorage.setItem('cf_proxy', document.getElementById('cfg-proxy').value);
+            toggleModal('settings-modal', false);
+            
+            currentMode = "live";
+            toggleDataMode();
+        }
+
+        function loadSavedSettings() {
+            if(localStorage.getItem('cf_domain')) document.getElementById('cfg-domain').value = localStorage.getItem('cf_domain');
+            if(localStorage.getItem('cf_email')) document.getElementById('cfg-email').value = localStorage.getItem('cf_email');
+            if(localStorage.getItem('cf_token')) document.getElementById('cfg-token').value = localStorage.getItem('cf_token');
+            if(localStorage.getItem('cf_proxy')) document.getElementById('cfg-proxy').value = localStorage.getItem('cf_proxy');
+        }
+    </script>
+</body>
+</html>
