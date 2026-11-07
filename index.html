@@ -74,30 +74,23 @@
     <!-- MAIN CONTAINER -->
     <main class="max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 flex-1 flex flex-col gap-6">
 
-        <!-- FALLBACK BANNER (Hidden unless tasks.json fails) -->
+        <!-- FALLBACK BANNER -->
         <div id="fallback-banner" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
             <i class="fa-solid fa-triangle-exclamation text-amber-400 text-lg mt-0.5"></i>
             <div class="text-xs text-slate-300">
                 <p class="font-semibold text-amber-400 mb-0.5">Using Built-in Sample Data</p>
-                <p>Could not find <code class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200">data/tasks.json</code> in your repository. Run your Python export script and upload <code class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200">data/tasks.json</code> to view live project updates.</p>
+                <p>Could not load <code class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200">data/tasks.json</code>. Showing fallback mock dataset.</p>
             </div>
         </div>
 
         <!-- STATS BANNER -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-slate-400 font-medium">Total Tasks</p>
+                    <p class="text-xs text-slate-400 font-medium">Total Action Items</p>
                     <p class="text-2xl font-bold text-white mt-1" id="stat-total">0</p>
                 </div>
                 <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg"><i class="fa-solid fa-list-check text-base"></i></div>
-            </div>
-            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 font-medium">In Progress</p>
-                    <p class="text-2xl font-bold text-blue-400 mt-1" id="stat-progress">0</p>
-                </div>
-                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg"><i class="fa-solid fa-spinner text-base"></i></div>
             </div>
             <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between">
                 <div>
@@ -108,10 +101,10 @@
             </div>
             <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-slate-400 font-medium">Overdue / Pending</p>
-                    <p class="text-2xl font-bold text-rose-400 mt-1" id="stat-overdue">0</p>
+                    <p class="text-xs text-slate-400 font-medium">Pending / To Do</p>
+                    <p class="text-2xl font-bold text-amber-400 mt-1" id="stat-todo">0</p>
                 </div>
-                <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg"><i class="fa-solid fa-clock-rotate-left text-base"></i></div>
+                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg"><i class="fa-solid fa-clock-rotate-left text-base"></i></div>
             </div>
         </div>
 
@@ -138,13 +131,12 @@
             <div class="flex flex-wrap items-center gap-2">
                 <div class="relative flex-1 sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
-                    <input type="text" id="filter-search" oninput="renderCurrentView()" placeholder="Filter by task or page..." class="w-full bg-slate-900/90 text-slate-200 text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="filter-search" oninput="renderCurrentView()" placeholder="Filter description or assignee..." class="w-full bg-slate-900/90 text-slate-200 text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500">
                 </div>
 
                 <select id="filter-status" onchange="renderCurrentView()" class="bg-slate-900/90 text-slate-300 text-xs px-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500">
                     <option value="ALL">All Statuses</option>
                     <option value="To Do">To Do</option>
-                    <option value="In Progress">In Progress</option>
                     <option value="Completed">Completed</option>
                 </select>
 
@@ -161,39 +153,28 @@
             <div id="view-gantt" class="view-panel flex-1 flex flex-col">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Project Schedule Timeline</h2>
-                    <span class="text-[11px] text-slate-400">Interactive Gantt powered by Plotly.js</span>
+                    <span class="text-[11px] text-slate-400">Task descriptions on Y-axis, due dates on X-axis</span>
                 </div>
-                <div id="plotly-gantt" class="w-full flex-1 min-h-[400px] rounded-lg overflow-hidden border border-slate-700/60 bg-slate-900/50"></div>
+                <div id="plotly-gantt" class="w-full flex-1 min-h-[420px] rounded-lg overflow-hidden border border-slate-700/60 bg-slate-900/50"></div>
             </div>
 
             <!-- KANBAN VIEW -->
-            <div id="view-kanban" class="view-panel hidden flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div id="view-kanban" class="view-panel hidden flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- To Do -->
                 <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
                     <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-slate-400"></span> To Do
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span> To Do / Pending
                         </span>
                         <span id="kanban-count-todo" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
                     </div>
                     <div id="kanban-todo" class="flex-1 space-y-2.5 overflow-y-auto max-h-[520px]"></div>
                 </div>
 
-                <!-- In Progress -->
-                <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
-                    <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-400"></span> In Progress
-                        </span>
-                        <span id="kanban-count-progress" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
-                    </div>
-                    <div id="kanban-progress" class="flex-1 space-y-2.5 overflow-y-auto max-h-[520px]"></div>
-                </div>
-
                 <!-- Completed -->
                 <div class="bg-slate-900/50 border border-slate-700/60 rounded-lg p-3 flex flex-col">
                     <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/60">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Completed
                         </span>
                         <span id="kanban-count-done" class="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 font-mono">0</span>
@@ -212,7 +193,6 @@
                             <th class="p-3">Assignee</th>
                             <th class="p-3">Start Date</th>
                             <th class="p-3">Due Date</th>
-                            <th class="p-3">Source Page</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-700/50">
@@ -225,14 +205,10 @@
 
     <!-- SCRIPT LOGIC -->
     <script>
-        // Fallback Sample Tasks (Used if data/tasks.json doesn't exist yet)
         const SAMPLE_TASKS = [
-            { id: "t1", task: "Finalize System Architecture Proposal", assignee: "Alex Rivera", startDate: "2026-11-01", dueDate: "2026-11-10", status: "Completed", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
-            { id: "t2", task: "Audit Cross-Origin API Tokens & Permissions", assignee: "Sarah Chen", startDate: "2026-11-04", dueDate: "2026-11-18", status: "In Progress", pageTitle: "Security Review Q4", pageUrl: "#" },
-            { id: "t3", task: "Draft Customer Migration Timeline", assignee: "Alex Rivera", startDate: "2026-11-06", dueDate: "2026-11-22", status: "In Progress", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
-            { id: "t4", task: "Configure Web Application Repository", assignee: "Jordan Smyth", startDate: "2026-11-08", dueDate: "2026-11-25", status: "To Do", pageTitle: "Infrastructure Sync", pageUrl: "#" },
-            { id: "t5", task: "Deploy Staging Environment for Testing", assignee: "Sarah Chen", startDate: "2026-11-10", dueDate: "2026-11-28", status: "To Do", pageTitle: "Sprint 42 Planning", pageUrl: "#" },
-            { id: "t6", task: "Update Live Docs Tracking Standard", assignee: "Jordan Smyth", startDate: "2026-11-02", dueDate: "2026-11-09", status: "Completed", pageTitle: "Doc Rollup Guidelines", pageUrl: "#" }
+            { id: "task-2", task: "22 Oct 2026", description: "Find blog posts Liam can follow", assignee: "Joshua Solis", startDate: "2026-10-15", status: "To Do" },
+            { id: "task-8", task: "26 Oct 2026", description: "Create Email for Carlos - outbound. inbound complete.", assignee: "Joshua Solis", startDate: "2026-10-20", status: "Completed" },
+            { id: "task-14", task: "09 Nov 2026", description: "Need to set up google search console for both Liam and Carlos", assignee: "Joshua Solis", startDate: "2026-11-01", status: "To Do" }
         ];
 
         let rawTasks = [];
@@ -243,7 +219,26 @@
             loadTaskData();
         };
 
-        // Fetch tasks.json from the repository folder
+        // Helper to convert strings like "22 Oct 2026" into "2026-10-22"
+        function parseConfluenceDate(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return '2026-11-30';
+            const cleaned = dateStr.trim();
+            // Check if already YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+
+            const months = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12' };
+            const parts = cleaned.split(' ');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = months[parts[1]] || '11';
+                const year = parts[2];
+                if (/^\d{4}$/.test(year) && months[parts[1]]) {
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            return '2026-11-30';
+        }
+
         async function loadTaskData() {
             const refreshIcon = document.getElementById('refresh-icon');
             const badge = document.getElementById('data-source-badge');
@@ -253,21 +248,49 @@
             refreshIcon.classList.add('fa-spin');
 
             try {
-                // Fetch static file from GitHub repository root
                 const response = await fetch('data/tasks.json?t=' + new Date().getTime());
                 if (!response.ok) throw new Error("data/tasks.json not found");
                 
-                rawTasks = await response.json();
+                const jsonArray = await response.json();
                 
-                // Show connected state
+                // Filter out header artifacts and map fields correctly
+                rawTasks = jsonArray
+                    .filter(t => {
+                        const taskVal = (t.task || "").trim();
+                        const descVal = (t.description || "").trim();
+                        // Filter out table header artifacts
+                        if (taskVal.toLowerCase() === "due date" || descVal.includes("Description | Assignee")) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map((t, idx) => {
+                        // The 'task' field in JSON is actually the due date string (e.g. "22 Oct 2026")
+                        const parsedDueDate = parseConfluenceDate(t.task);
+                        // The 'description' field is the actual task description
+                        const taskDesc = t.description || t.task || "Untitled Task";
+                        
+                        return {
+                            id: t.id || `task-${idx}`,
+                            description: taskDesc,
+                            assignee: t.assignee || "Unassigned",
+                            startDate: t.startDate || "2026-10-01",
+                            dueDate: parsedDueDate,
+                            status: t.status || "To Do",
+                            pageUrl: t.pageUrl || "#"
+                        };
+                    });
+
                 badge.className = "inline-block w-2 h-2 rounded-full bg-emerald-400";
-                badgeText.innerText = "Loaded from repository data/tasks.json";
+                badgeText.innerText = `Loaded ${rawTasks.length} tasks from data/tasks.json`;
                 banner.classList.add('hidden');
             } catch (err) {
                 console.warn("Could not fetch data/tasks.json, using fallback sample data:", err);
-                rawTasks = [...SAMPLE_TASKS];
+                rawTasks = SAMPLE_TASKS.map(t => ({
+                    ...t,
+                    dueDate: parseConfluenceDate(t.task)
+                }));
                 
-                // Show fallback warning state
                 badge.className = "inline-block w-2 h-2 rounded-full bg-amber-400";
                 badgeText.innerText = "Sample Data Mode (Missing data/tasks.json)";
                 banner.classList.remove('hidden');
@@ -278,7 +301,6 @@
             }
         }
 
-        // Switch View Panels
         function switchView(viewName) {
             currentView = viewName;
             document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
@@ -295,17 +317,14 @@
             renderCurrentView();
         }
 
-        // Apply Filters & Update Stats
         function applyFilters() {
             const search = document.getElementById('filter-search').value.toLowerCase();
             const status = document.getElementById('filter-status').value;
             const assignee = document.getElementById('filter-assignee').value;
 
-            const todayStr = new Date().toISOString().split('T')[0];
-
             filteredTasks = rawTasks.filter(t => {
-                const matchesSearch = (t.task || t.text || '').toLowerCase().includes(search) || 
-                                      (t.pageTitle || '').toLowerCase().includes(search);
+                const matchesSearch = (t.description || '').toLowerCase().includes(search) || 
+                                      (t.assignee || '').toLowerCase().includes(search);
                 const matchesStatus = status === 'ALL' || t.status === status;
                 const matchesAssignee = assignee === 'ALL' || t.assignee === assignee;
                 return matchesSearch && matchesStatus && matchesAssignee;
@@ -313,9 +332,8 @@
 
             // Update Statistics
             document.getElementById('stat-total').innerText = rawTasks.length;
-            document.getElementById('stat-progress').innerText = rawTasks.filter(t => t.status === 'In Progress').length;
             document.getElementById('stat-completed').innerText = rawTasks.filter(t => t.status === 'Completed').length;
-            document.getElementById('stat-overdue').innerText = rawTasks.filter(t => t.status !== 'Completed' && (t.dueDate < todayStr || t.status === 'To Do')).length;
+            document.getElementById('stat-todo').innerText = rawTasks.filter(t => t.status !== 'Completed').length;
         }
 
         function populateAssigneeDropdown() {
@@ -340,33 +358,33 @@
                 return;
             }
 
-            // Map tasks to Plotly timeline format
-            const taskNames = filteredTasks.map(t => (t.task || t.text).substring(0, 30) + '...');
-            const startDates = filteredTasks.map(t => t.startDate || t.creationDate || '2026-11-01');
-            const dueDates = filteredTasks.map(t => t.dueDate || '2026-11-30');
-            const statusColors = filteredTasks.map(t => {
-                if (t.status === 'Completed') return '#10b981'; // Emerald
-                if (t.status === 'In Progress') return '#60a5fa'; // Blue
-                return '#94a3b8'; // Slate
+            // Map task descriptions to Y-axis and correctly parsed due dates to X-axis
+            const taskDescriptions = filteredTasks.map(t => {
+                const desc = t.description || "";
+                return desc.length > 55 ? desc.substring(0, 52) + '...' : desc;
             });
+            const startDates = filteredTasks.map(t => t.startDate || '2026-10-01');
+            const dueDates = filteredTasks.map(t => t.dueDate || '2026-11-30');
+            const statusColors = filteredTasks.map(t => t.status === 'Completed' ? '#10b981' : '#6366f1');
 
             const trace = {
                 type: 'bar',
                 x: dueDates.map((d, idx) => {
                     const start = new Date(startDates[idx]);
                     const end = new Date(d);
-                    return (end - start) / (1000 * 60 * 60 * 24);
+                    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
+                    return diffDays > 0 ? diffDays : 1; // ensure visible bar width
                 }),
-                y: taskNames,
+                y: taskDescriptions,
                 base: startDates,
                 orientation: 'h',
                 marker: { color: statusColors, cornerradius: 4 },
                 hoverinfo: 'text',
-                text: filteredTasks.map(t => `<b>${t.task || t.text}</b><br>Assignee: ${t.assignee}<br>Status: ${t.status}<br>Due: ${t.dueDate}`)
+                text: filteredTasks.map(t => `<b>${t.description}</b><br>Assignee: ${t.assignee}<br>Status: ${t.status}<br>Due: ${t.dueDate}`)
             };
 
             const layout = {
-                margin: { l: 200, r: 30, t: 20, b: 40 },
+                margin: { l: 280, r: 30, t: 20, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 xaxis: {
@@ -387,17 +405,15 @@
 
         // Render Kanban Board View
         function renderKanban() {
-            const todoList = filteredTasks.filter(t => t.status === 'To Do' || t.status === 'incomplete');
-            const progressList = filteredTasks.filter(t => t.status === 'In Progress');
-            const doneList = filteredTasks.filter(t => t.status === 'Completed' || t.status === 'complete');
+            const todoList = filteredTasks.filter(t => t.status !== 'Completed');
+            const doneList = filteredTasks.filter(t => t.status === 'Completed');
 
             document.getElementById('kanban-count-todo').innerText = todoList.length;
-            document.getElementById('kanban-count-progress').innerText = progressList.length;
             document.getElementById('kanban-count-done').innerText = doneList.length;
 
             const cardHTML = t => `
                 <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-lg shadow-sm hover:border-slate-600 transition space-y-2.5">
-                    <p class="text-xs text-slate-200 font-medium ${t.status === 'Completed' ? 'line-through text-slate-400' : ''}">${t.task || t.text}</p>
+                    <p class="text-xs text-slate-200 font-medium">${t.description}</p>
                     <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-slate-700/50">
                         <span class="flex items-center gap-1.5"><i class="fa-regular fa-user text-indigo-400"></i> ${t.assignee}</span>
                         <span class="flex items-center gap-1.5 font-mono"><i class="fa-regular fa-calendar"></i> ${t.dueDate}</span>
@@ -405,23 +421,21 @@
                 </div>
             `;
 
-            document.getElementById('kanban-todo').innerHTML = todoList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-6">No tasks</p>';
-            document.getElementById('kanban-progress').innerHTML = progressList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-6">No tasks</p>';
-            document.getElementById('kanban-done').innerHTML = doneList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-6">No tasks</p>';
+            document.getElementById('kanban-todo').innerHTML = todoList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-6">No tasks in progress</p>';
+            document.getElementById('kanban-done').innerHTML = doneList.map(cardHTML).join('') || '<p class="text-xs text-slate-600 text-center py-6">No completed tasks</p>';
         }
 
-        // Render Data Table View
+        // Render Data Table View (Without Source Page column)
         function renderTable() {
             const tbody = document.getElementById('table-body');
             if (!filteredTasks.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500">No matching tasks found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-500">No matching tasks found.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = filteredTasks.map(t => {
-                let statusBadge = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+                let statusBadge = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
                 if (t.status === 'Completed') statusBadge = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                else if (t.status === 'In Progress') statusBadge = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
 
                 return `
                     <tr class="hover:bg-slate-800/50 transition">
@@ -430,15 +444,10 @@
                                 ${t.status}
                             </span>
                         </td>
-                        <td class="p-3 font-medium text-slate-200">${t.task || t.text}</td>
+                        <td class="p-3 font-medium text-slate-200">${t.description}</td>
                         <td class="p-3 text-slate-300"><i class="fa-regular fa-user text-[10px] mr-1.5 text-indigo-400"></i>${t.assignee}</td>
-                        <td class="p-3 text-slate-400 font-mono text-[11px]">${t.startDate || '2026-11-01'}</td>
+                        <td class="p-3 text-slate-400 font-mono text-[11px]">${t.startDate}</td>
                         <td class="p-3 text-slate-400 font-mono text-[11px]">${t.dueDate}</td>
-                        <td class="p-3">
-                            <a href="${t.pageUrl || '#'}" target="_blank" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> ${t.pageTitle || 'Doc'}
-                            </a>
-                        </td>
                     </tr>
                 `;
             }).join('');
